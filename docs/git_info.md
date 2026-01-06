@@ -116,3 +116,9 @@ Through these steps:
 
 This setup ensures the project is ready for collaboration,
 code reviews, CI/CD pipelines, and open-source contribution.
+
+## Publishing to GitHub
+
+The local Git repository was linked to a remote GitHub repository
+using `git remote add origin`. The project was then pushed to GitHub
+using `git push -u origin main` to make the code publicly accessible.
