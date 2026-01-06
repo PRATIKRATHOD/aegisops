@@ -1,3 +1,77 @@
+# AegisOps 🚀
+### Agentic AI–Powered Incident Intelligence Platform
+
+---
+
+## 📌 Overview
+
+AegisOps is an open-source, enterprise-inspired incident intelligence
+platform that demonstrates how production incidents can be detected,
+correlated, and analyzed using **local, open-source GenAI**.
+
+The project is designed around **real ITSM and AIOps principles**,
+focusing on safe AI integration, structured data, and clean engineering
+practices—without relying on paid APIs or external SaaS tools.
+
+---
+
+## ❓ Why AegisOps?
+
+Modern production environments face several challenges:
+
+- Repeated log-based failures
+- Duplicate incidents causing alert fatigue
+- Manual and inconsistent root cause analysis
+- Unstructured and unsafe AI outputs
+
+AegisOps addresses these problems by combining **incident correlation**
+with **structured, validated AI-powered RCA**.
+
+---
+
+## ✨ Key Features
+
+### 🔹 Incident Detection & Correlation
+- Log-based incident detection
+- ServiceNow-style incident schema
+- Correlation logic to suppress duplicate incidents
+
+### 🔹 AI-Powered Root Cause Analysis
+- Local GenAI using **Ollama + Mistral**
+- Strict JSON-based RCA output
+- Schema validation and normalization
+
+### 🔹 Enterprise-Grade Design
+- Vendor-agnostic architecture
+- No cloud dependencies
+- Runtime data excluded from version control
+- Automation-ready outputs
+
+---
+
+## 🏗️ Project Architecture
+
+aegisops/
+├── agent-core/
+│   ├── incident_creator.py        # Log-based incident detection & correlation
+│   ├── incident_explainer.py      # Human-readable AI incident explanation
+│   └── incident_rca_generator.py  # Unified GenAI RCA pipeline
+│
+├── incidents/
+│   └── incidents.sample.json      # Sample incident schema (runtime data ignored)
+│
+├── logs/
+│   └── sample_app.log             # Sample application logs
+│
+├── docs/
+│   ├── incident-correlation.md    # Incident creation & correlation logic
+│   ├── incident-rca.md            # AI-powered RCA design & validation
+│   ├── git_info.md                # Git setup and workflow documentation
+│   └── ollama-explanation.md      # Local GenAI setup guide
+│
+├── .gitignore                     # Excludes runtime data, logs, caches
+└── README.md                      # Project overview and usage guide
+
 # 🛡️ AegisOps – Agentic AIOps Incident & RCA Engine
 
 ## ⚙️ Tech Stack
