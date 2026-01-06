@@ -1,0 +1,23 @@
+[
+    {
+        "incident_id": "INC1000001",
+        "number": "INC1000001",
+        "status": "OPEN",
+        "incident_state": "New",
+        "opened_at": "2026-01-06T23:35:29.426590",
+        "opened_by": "aegisops-agent",
+        "short_description": "Application crashed due to OutOfMemoryError",
+        "description": "OutOfMemoryError detected in application logs",
+        "category": "software",
+        "subcategory": "application",
+        "impact": "2",
+        "urgency": "1",
+        "priority": "2",
+        "assignment_group": "Application Support",
+        "comments": "Incident automatically created from log monitoring",
+        "work_notes": "ERROR OutOfMemoryError: Java heap space\nRepeated occurrence detected at 2026-01-06T23:35:36.940275\nRepeated occurrence detected at 2026-01-06T23:35:43.272460",
+        "source": "LOG",
+        "correlation_id": "LOG-OOM-001",
+        "sys_updated_on": "2026-01-06T23:35:43.272477"
+    }
+]

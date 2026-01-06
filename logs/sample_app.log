@@ -1,0 +1,5 @@
+INFO  Application started
+INFO  User login successful
+WARN  Memory usage at 75%
+ERROR OutOfMemoryError: Java heap space
+INFO  Application stoppeds
