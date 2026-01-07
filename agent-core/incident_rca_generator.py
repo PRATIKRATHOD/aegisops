@@ -100,15 +100,46 @@ def main():
         return
 
     # Attach normalized RCA
+    confidence = calculate_confidence(parsed_rca, incident)
+
     incident["rca"] = {
         "generated_at": datetime.now().isoformat(),
-        **parsed_rca
+        **parsed_rca,
+        "confidence": confidence
     }
-
+    
     incidents[-1] = incident
     save_incidents(incidents)
 
     print("✅ Structured RCA generated and stored successfully")
+
+def calculate_confidence(rca, incident):
+    score = 0.5
+    reasons = []
+
+    if "OutOfMemoryError" in incident.get("work_notes", ""):
+        score += 0.2
+        reasons.append("Clear OutOfMemoryError signature")
+
+    if "Repeated occurrence" in incident.get("work_notes", ""):
+        score += 0.1
+        reasons.append("Issue observed multiple times")
+
+    if rca.get("affected_component"):
+        score += 0.1
+        reasons.append("Specific component identified")
+
+    score = min(score, 0.95)
+
+    risk_level = "LOW" if score >= 0.75 else "MEDIUM"
+    requires_approval = score < 0.75
+
+    return {
+        "confidence_score": round(score, 2),
+        "confidence_reason": ", ".join(reasons),
+        "risk_level": risk_level,
+        "requires_human_approval": requires_approval
+    }
 
 
 if __name__ == "__main__":
