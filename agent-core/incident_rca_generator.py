@@ -2,6 +2,7 @@ import json
 import subprocess
 from datetime import datetime
 from knowledge_base.incident_memory import find_similar_incident
+from audit_logger import write_audit
 
 
 INCIDENT_FILE = "../incidents/incidents.json"
@@ -98,6 +99,8 @@ def main():
     try:
         parsed_rca = extract_json_from_text(raw_rca)
         validate_rca(parsed_rca)
+        write_audit("RCA_GENERATED", parsed_rca)
+
     except Exception as e:
         print("❌ RCA generation failed:", str(e))
         incident["rca"] = {
@@ -110,6 +113,8 @@ def main():
 
     # Attach normalized RCA
     confidence = calculate_confidence(parsed_rca, incident)
+    write_audit("CONFIDENCE_SCORED", confidence)
+
     
     if incident.get("memory_reference", {}).get("used_for_context"):
         confidence["confidence_score"] = round(
