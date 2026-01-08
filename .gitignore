@@ -19,3 +19,20 @@ Thumbs.db
 # Java / Maven
 target/
 backend/target/
+
+
+# UI (React / Vite)
+ui/node_modules/
+ui/dist/
+ui/.env
+ui/.env.local
+ui/.env.*.local
+
+# Logs
+ui/npm-debug.log*
+ui/yarn-debug.log*
+ui/yarn-error.log*
+
+# Editor
+ui/.vscode/
+ui/.idea/
