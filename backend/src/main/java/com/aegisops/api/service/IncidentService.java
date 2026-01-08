@@ -69,5 +69,28 @@ public class IncidentService {
         return (Map<String, Object>) incident.get("execution_preview");
     }
 
+    public Map<String, Object> createIncident(Map<String, Object> newIncident) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        List<Map<String, Object>> incidents =
+                mapper.readValue(new File(INCIDENT_FILE), List.class);
+
+        // Generate new ID
+        String id = "INC" + String.format("%07d", incidents.size() + 1);
+        newIncident.put("incident_id", id);
+        newIncident.put("number", id);
+        newIncident.put("opened_at", java.time.LocalDateTime.now().toString());
+        newIncident.put("opened_by", "api-client");
+
+        // Add to list
+        incidents.add(newIncident);
+
+        // Save
+        mapper.writeValue(new File(INCIDENT_FILE), incidents);
+
+        return newIncident;
+    }
+
+
 
 }
