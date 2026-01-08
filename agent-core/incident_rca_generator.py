@@ -80,6 +80,41 @@ def validate_rca(rca_obj):
     if missing:
         raise ValueError("Missing RCA fields: " + ", ".join(missing))
 
+def make_agent_decision(rca_block):
+    confidence = rca_block["confidence"]["confidence_score"]
+    risk = rca_block["confidence"]["risk_level"]
+
+    # 1. Low confidence → observe only
+    if confidence < 0.60:
+        return {
+            "decision": "OBSERVE",
+            "reason": "Low confidence RCA",
+            "action_allowed": False
+        }
+
+    # 2. Medium confidence → recommend
+    if 0.60 <= confidence < 0.80:
+        return {
+            "decision": "RECOMMEND",
+            "reason": "Moderate confidence RCA",
+            "action_allowed": False
+        }
+
+    # 3. High confidence & low risk → act
+    if confidence >= 0.80 and risk == "LOW":
+        return {
+            "decision": "ACT",
+            "reason": "High confidence and low risk",
+            "action_allowed": True
+        }
+
+    # Safety fallback
+    return {
+        "decision": "OBSERVE",
+        "reason": "Safety fallback",
+        "action_allowed": False
+    }
+
 
 # ---------- MAIN FLOW ----------
 def main():
@@ -127,6 +162,14 @@ def main():
         **parsed_rca,
         "confidence": confidence
     }
+    decision = make_agent_decision(incident["rca"])
+    write_audit("AGENT_DECISION", decision)
+
+    incident["agent_decision"] = {
+        **decision,
+        "decided_at": datetime.now().isoformat()
+    }
+
 
     incidents[-1] = incident
     save_incidents(incidents)
