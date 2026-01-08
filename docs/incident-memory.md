@@ -24,3 +24,18 @@ and action recommendations.
 - Vector similarity (RAG)
 - Confidence boosting from history
 - Cross-incident pattern detection
+
+### 🔥 Confidence Boosting from Memory
+
+If a new incident matches a previous incident in the knowledge base,
+AegisOps automatically boosts the RCA confidence score.
+
+Benefits:
+- Faster RCA for repeated issues
+- Trust based on historical patterns
+- Lower SME dependency
+
+Boost Logic:
+- +0.10 confidence for a memory match
+- Capped at 0.95 for safety
+
