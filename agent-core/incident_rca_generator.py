@@ -176,6 +176,21 @@ def main():
 
     print("✅ Structured RCA generated and stored successfully")
 
+    # Save RCA to knowledge base
+    try:
+        with open("knowledge_base/historical_rca.json", "r") as f:
+            history = json.load(f)
+    except:
+        history = []
+
+    history.append(incident["rca"])
+
+    with open("knowledge_base/historical_rca.json", "w") as f:
+        json.dump(history, f, indent=4)
+
+    write_audit("RCA_STORED_IN_KB", {"count": len(history)})
+
+
 def calculate_confidence(rca, incident):
     score = 0.5
     reasons = []

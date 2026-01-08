@@ -1,5 +1,7 @@
 import json
 from datetime import datetime
+from audit_logger import write_audit
+
 
 INCIDENT_FILE = "../incidents/incidents.json"
 
@@ -64,7 +66,21 @@ def main():
 
     plan = build_action_plan(incident)
     if plan:
+        write_audit("ACTION_PLAN_CREATED", plan)
         incident["action_plan"] = plan
+           # ---------------------- ADD THIS BLOCK HERE ----------------------
+        try:
+            with open("knowledge_base/actions_history.json", "r") as f:
+                actions_hist = json.load(f)
+        except:
+            actions_hist = []
+
+        actions_hist.append(plan)
+
+        with open("knowledge_base/actions_history.json", "w") as f:
+            json.dump(actions_hist, f, indent=4)
+
+        write_audit("ACTION_PLAN_STORED_IN_KB", {"count": len(actions_hist)})
         incidents[-1] = incident
         save_incidents(incidents)
         print("✅ Action plan generated successfully")
