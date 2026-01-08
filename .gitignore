@@ -15,3 +15,7 @@ incidents/audit_log.json
 # System files
 .DS_Store
 Thumbs.db
+
+# Java / Maven
+target/
+backend/target/
