@@ -70,26 +70,39 @@ public class IncidentService {
     }
 
     public Map<String, Object> createIncident(Map<String, Object> newIncident) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = new ObjectMapper();
 
-        List<Map<String, Object>> incidents =
-                mapper.readValue(new File(INCIDENT_FILE), List.class);
+    List<Map<String, Object>> incidents =
+            mapper.readValue(new File(INCIDENT_FILE), List.class);
 
-        // Generate new ID
-        String id = "INC" + String.format("%07d", incidents.size() + 1);
-        newIncident.put("incident_id", id);
-        newIncident.put("number", id);
-        newIncident.put("opened_at", java.time.LocalDateTime.now().toString());
-        newIncident.put("opened_by", "api-client");
+    // Generate new ID
+    String id = "INC" + String.format("%07d", incidents.size() + 1);
+    newIncident.put("incident_id", id);
+    newIncident.put("number", id);
+    newIncident.put("opened_at", java.time.LocalDateTime.now().toString());
+    newIncident.put("opened_by", "api-client");
 
-        // Add to list
-        incidents.add(newIncident);
+    // ⭐ ADD DEFAULT FIELDS (ServiceNow Style)
+    newIncident.putIfAbsent("status", "OPEN");
+    newIncident.putIfAbsent("incident_state", "New");
+    newIncident.putIfAbsent("category", "software");
+    newIncident.putIfAbsent("subcategory", "general");
+    newIncident.putIfAbsent("source", "API");
+    newIncident.putIfAbsent("priority", "3");
+    newIncident.putIfAbsent("urgency", "3");
+    newIncident.putIfAbsent("impact", "3");
+    newIncident.putIfAbsent("assignment_group", "Application Support");
+    newIncident.putIfAbsent("comments", "Created via API");
+    newIncident.putIfAbsent("work_notes", "");
 
-        // Save
-        mapper.writeValue(new File(INCIDENT_FILE), incidents);
+    // Add to list
+    incidents.add(newIncident);
 
-        return newIncident;
-    }
+    // Save
+    mapper.writeValue(new File(INCIDENT_FILE), incidents);
+
+    return newIncident;
+}
 
 
 
