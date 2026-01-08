@@ -1,5 +1,7 @@
 import json
 from datetime import datetime
+from audit_logger import write_audit
+
 
 INCIDENT_FILE = "../incidents/incidents.json"
 
@@ -49,6 +51,7 @@ def main():
 
     preview = generate_execution_preview(incident)
     if preview:
+        write_audit("EXECUTION_PREVIEW_CREATED", preview)
         incident["execution_preview"] = preview
         incidents[-1] = incident
         save_incidents(incidents)
