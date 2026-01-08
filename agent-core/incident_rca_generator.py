@@ -1,6 +1,8 @@
 import json
 import subprocess
 from datetime import datetime
+from knowledge_base.incident_memory import find_similar_incident
+
 
 INCIDENT_FILE = "../incidents/incidents.json"
 
@@ -82,6 +84,13 @@ def validate_rca(rca_obj):
 def main():
     incidents = load_incidents()
     incident = incidents[-1]
+    memory_match = find_similar_incident(incident)
+
+    if memory_match:
+        incident["memory_reference"] = {
+            "matched_incident": memory_match["incident_id"],
+            "used_for_context": True
+        }
 
     prompt = build_rca_prompt(incident)
     raw_rca = generate_raw_rca(prompt)
@@ -107,7 +116,7 @@ def main():
         **parsed_rca,
         "confidence": confidence
     }
-    
+
     incidents[-1] = incident
     save_incidents(incidents)
 
