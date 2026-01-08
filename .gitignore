@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+
+# Logs
+logs/*.log
+
+# Incidents runtime data
+incidents/incidents.json
+incidents/audit_log.json
+
+# System files
+.DS_Store
+Thumbs.db
