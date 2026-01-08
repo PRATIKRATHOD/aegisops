@@ -1,1 +1,12 @@
-[]
+[
+    {
+        "generated_at": "2026-01-08T16:39:22.508905",
+        "steps": [
+            "Analyze JVM heap usage",
+            "Increase JVM heap size",
+            "Restart application service"
+        ],
+        "risk_level": "HIGH",
+        "requires_approval": true
+    }
+]
