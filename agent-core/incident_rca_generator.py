@@ -110,6 +110,7 @@ def main():
 
     # Attach normalized RCA
     confidence = calculate_confidence(parsed_rca, incident)
+    
     if incident.get("memory_reference", {}).get("used_for_context"):
         confidence["confidence_score"] = round(
             min(confidence["confidence_score"] + 0.10, 0.95), 2
