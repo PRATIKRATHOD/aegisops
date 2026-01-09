@@ -37,3 +37,4 @@ ui/yarn-error.log*
 # Editor
 ui/.vscode/
 ui/.idea/
+ui/.vite/
