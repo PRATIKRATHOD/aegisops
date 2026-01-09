@@ -8,9 +8,11 @@ venv/
 # Logs
 logs/*.log
 
-# Incidents runtime data
+# Incidents runtime data (ignored everywhere)
 incidents/incidents.json
 incidents/audit_log.json
+backend/src/main/resources/data/*.json
+agent-core/knowledge_base/*.json
 
 # System files
 .DS_Store
@@ -19,7 +21,6 @@ Thumbs.db
 # Java / Maven
 target/
 backend/target/
-
 
 # UI (React / Vite)
 ui/node_modules/
