@@ -1,63 +1,79 @@
 import json
 from datetime import datetime
+from path_config import INCIDENTS_PATH
 from audit_logger import write_audit
 
 
-INCIDENT_FILE = "../incidents/incidents.json"
-
-
-# ----------------- LOAD & SAVE -----------------
+# ---------------- LOAD / SAVE ----------------
 def load_incidents():
-    with open(INCIDENT_FILE, "r") as f:
+    with open(INCIDENTS_PATH, "r") as f:
         return json.load(f)
 
 
 def save_incidents(incidents):
-    with open(INCIDENT_FILE, "w") as f:
+    with open(INCIDENTS_PATH, "w") as f:
         json.dump(incidents, f, indent=4)
 
 
-# ----------------- EXECUTION INTENT -----------------
-def generate_execution_preview(incident):
-    plan = incident.get("action_plan", {})
-    steps = plan.get("steps", [])
-    risk = plan.get("risk_level", "LOW")
-    approval = plan.get("requires_approval", True)
-
-    if not steps:
-        return None
+# ---------------- SIMULATION ENGINE ----------------
+def generate_execution_preview(action_plan):
+    """Safe simulation (no real commands run)."""
 
     preview_steps = []
-    for step in steps:
+
+    for step in action_plan.get("steps", []):
         preview_steps.append({
             "step": step,
             "status": "PENDING",
-            "notes": "This is a simulation. No actual execution performed."
+            "notes": "Simulation only – no actual execution performed."
         })
 
-    return {
-        "generated_at": datetime.now().isoformat(),
-        "risk_level": risk,
-        "requires_approval": approval,
-        "execution_mode": "SIMULATION_ONLY",
-        "steps": preview_steps
-    }
+    return preview_steps
 
 
-# ---------------------- MAIN ----------------------
+# ---------------- MAIN EXECUTION LOGIC ----------------
 def main():
     incidents = load_incidents()
     incident = incidents[-1]
 
-    preview = generate_execution_preview(incident)
-    if preview:
-        write_audit("EXECUTION_PREVIEW_CREATED", preview)
-        incident["execution_preview"] = preview
-        incidents[-1] = incident
-        save_incidents(incidents)
-        print("✅ Execution preview generated (simulation only)")
-    else:
-        print("⚠️ No action plan found — skipping execution simulation")
+    # Load decision and plan
+    decision = incident.get("agent_decision", {})
+    action_plan = incident.get("action_plan", None)
+
+    if not action_plan:
+        print("❌ No action_plan found. Run action_planner.py first.")
+        return
+
+    # Execution mode
+    execution_mode = (
+        "SIMULATION_ONLY"
+        if not decision.get("action_allowed", False)
+        else "SAFE_MODE"
+    )
+
+    preview_steps = generate_execution_preview(action_plan)
+
+    execution_preview = {
+        "generated_at": datetime.now().isoformat(),
+        "risk_level": action_plan.get("risk_level", "UNKNOWN"),
+        "requires_approval": action_plan.get("requires_approval", True),
+        "execution_mode": execution_mode,
+        "steps": preview_steps
+    }
+
+    # Save into incident
+    incident["execution_preview"] = execution_preview
+    incidents[-1] = incident
+    save_incidents(incidents)
+
+    # Audit log
+    write_audit("EXECUTION_PREVIEW_CREATED", {
+        "incident_id": incident.get("incident_id"),
+        "steps": len(preview_steps),
+        "mode": execution_mode
+    })
+
+    print("✅ Execution Preview Generated Successfully")
 
 
 if __name__ == "__main__":

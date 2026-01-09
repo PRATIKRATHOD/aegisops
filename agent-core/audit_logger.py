@@ -1,33 +1,32 @@
 import json
 from datetime import datetime
-import os
-
-AUDIT_FILE = "../incidents/audit_log.json"
+from path_config import AUDIT_LOG_PATH
 
 
-# ------------- ENSURE AUDIT LOG EXISTS -------------
-def _ensure_file():
-    if not os.path.exists(AUDIT_FILE):
-        with open(AUDIT_FILE, "w") as f:
+def ensure_file_exists(path):
+    try:
+        with open(path, "r") as f:
+            json.load(f)
+    except:
+        with open(path, "w") as f:
             json.dump([], f, indent=4)
 
 
-# ------------- WRITE AUDIT ENTRY -------------
 def write_audit(event_type, details):
-    _ensure_file()
+    ensure_file_exists(AUDIT_LOG_PATH)
 
-    audit_entry = {
+    with open(AUDIT_LOG_PATH, "r") as f:
+        logs = json.load(f)
+
+    log_entry = {
         "timestamp": datetime.now().isoformat(),
         "event_type": event_type,
         "details": details
     }
 
-    with open(AUDIT_FILE, "r") as f:
-        logs = json.load(f)
+    logs.append(log_entry)
 
-    logs.append(audit_entry)
-
-    with open(AUDIT_FILE, "w") as f:
+    with open(AUDIT_LOG_PATH, "w") as f:
         json.dump(logs, f, indent=4)
 
     print(f"📝 Audit logged: {event_type}")

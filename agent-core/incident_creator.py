@@ -5,7 +5,7 @@ import os
 # ---------------- PATHS ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "..", "logs", "sample_app.log")
-INCIDENT_FILE = os.path.join(BASE_DIR, "..", "incidents", "incidents.json")
+INCIDENT_FILE = "../backend/src/main/resources/data/incidents.json"
 
 # ---------------- HELPERS ----------------
 def load_incidents():

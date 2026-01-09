@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-INCIDENT_FILE = "../incidents/incidents.json"
+INCIDENT_FILE = "../backend/src/main/resources/data/incidents.json"
 
 
 def load_latest_incident():
