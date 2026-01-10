@@ -14,3 +14,7 @@ export async function apiGet(endpoint) {
 
   return res.json();
 }
+
+export async function apiGetIncidentAudit(incidentId) {
+  return apiGet(`/audit/incident/${incidentId}`);
+}

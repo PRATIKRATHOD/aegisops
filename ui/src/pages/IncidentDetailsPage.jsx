@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiGet } from "../api/apiClient";
+import AuditEventSmall from "../components/AuditEventSmall";
+import { apiGetIncidentAudit } from "../api/apiClient";
 
 export default function IncidentDetailsPage() {
   const { id } = useParams();
   const [incident, setIncident] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+
 
   useEffect(() => {
     load();
+    loadAudit();
   }, []);
 
   async function load() {
@@ -18,6 +23,16 @@ export default function IncidentDetailsPage() {
       console.error("Failed to load incident:", err);
     }
   }
+  
+
+  async function loadAudit() {
+  try {
+    const data = await apiGetIncidentAudit(id);
+    setAuditLogs(data);
+  } catch (err) {
+    console.error("Failed to load audit logs:", err);
+  }
+}
 
   if (!incident) return <h2>Loading incident...</h2>;
 
@@ -121,6 +136,16 @@ export default function IncidentDetailsPage() {
           <p>No execution preview generated.</p>
         )}
       </Section>
+      {/* AUDIT LOGS FOR THIS INCIDENT */}
+<Section title="Audit Log Timeline">
+  {auditLogs.length === 0 ? (
+    <p>No audit logs for this incident.</p>
+  ) : (
+    auditLogs.map((event, idx) => (
+      <AuditEventSmall key={idx} event={event} />
+    ))
+  )}
+</Section>
     </div>
   );
 }

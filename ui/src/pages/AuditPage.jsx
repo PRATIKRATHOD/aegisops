@@ -1,55 +1,73 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "../api/apiClient";
+import AuditEvent from "../components/AuditEvent";
 
 export default function AuditPage() {
   const [logs, setLogs] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    load();
+    loadLogs();
   }, []);
 
-  async function load() {
+  async function loadLogs() {
     try {
       const data = await apiGet("/audit");
       setLogs(data);
+      setFiltered(data);
     } catch (err) {
-      console.error("ERROR loading audit logs:", err);
+      console.error("Failed to load audit logs:", err);
     }
   }
 
-  const card = {
-    background: "white",
-    padding: "20px",
-    borderRadius: "12px",
-    marginBottom: "20px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
-  };
+  function handleSearch(e) {
+    const q = e.target.value.toLowerCase();
+    setQuery(q);
 
-  const jsonBox = {
-    background: "#F9FAFB",
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #E5E7EB",
-    whiteSpace: "pre-wrap",
-    fontSize: "14px"
-  };
+    const f = logs.filter(
+      (log) =>
+        log.event_type.toLowerCase().includes(q) ||
+        JSON.stringify(log.details).toLowerCase().includes(q) ||
+        (log.incident_id && log.incident_id.toLowerCase().includes(q))
+    );
+
+    setFiltered(f);
+  }
 
   return (
-    <div>
-      <h2 style={{ marginBottom: "20px" }}>Audit Logs</h2>
+    <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+      <h1 style={title}>Audit Logs</h1>
 
-      {logs.length === 0 && <p>No audit logs found.</p>}
+      {/* Search Bar */}
+      <input
+        type="text"
+        placeholder="Search events..."
+        value={query}
+        onChange={handleSearch}
+        style={searchBox}
+      />
 
-      {logs.map((log, i) => (
-        <div key={i} style={card}>
-          <h3 style={{ margin: "0 0 5px 0" }}>{log.event_type}</h3>
-          <p style={{ color: "#6B7280", marginTop: 0 }}>{log.timestamp}</p>
-
-          <div style={jsonBox}>
-            {JSON.stringify(log.details, null, 2)}
-          </div>
-        </div>
+      {/* Timeline */}
+      {filtered.map((event, index) => (
+        <AuditEvent key={index} event={event} />
       ))}
     </div>
   );
 }
+
+const title = {
+  fontSize: "28px",
+  fontWeight: "700",
+  marginBottom: "25px",
+  color: "#111827",
+};
+
+const searchBox = {
+  width: "100%",
+  padding: "12px",
+  marginBottom: "20px",
+  borderRadius: "8px",
+  border: "1px solid #D1D5DB",
+  fontSize: "15px",
+};
