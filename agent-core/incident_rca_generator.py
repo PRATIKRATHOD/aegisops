@@ -3,9 +3,11 @@ import subprocess
 from datetime import datetime
 
 from path_config import INCIDENTS_PATH, HISTORICAL_RCA_PATH
-from knowledge_base.incident_memory import find_similar_incident
 from audit_logger import write_audit
+from knowledge_base.incident_memory import find_similar_incident
 
+
+# ---------------- REQUIRED FIELDS ----------------
 REQUIRED_FIELDS = [
     "root_cause_type",
     "affected_component",
@@ -27,44 +29,31 @@ def save_incidents(incidents):
         json.dump(incidents, f, indent=4)
 
 
-# ---------------- STRONG JSON PROMPT ----------------
-def build_rca_prompt(incident):
+# ---------------- LLM CALL ----------------
+def build_prompt(incident):
     return f"""
-You are a senior Site Reliability Engineer.
+You are a senior SRE.
 
-STRICT INSTRUCTION:
-Return ONLY a VALID JSON object. 
-The response MUST start with '{{' and end with '}}'.
-NEVER include explanation, never include markdown.
+Generate a ROOT CAUSE ANALYSIS for this incident.
+Return ONLY valid JSON. No extra text.
 
-JSON fields required:
+Incident Details:
+Short: {incident['short_description']}
+Category: {incident['category']}
+Subcategory: {incident['subcategory']}
+Priority: {incident['priority']}
+Work Notes: {incident['work_notes']}
+
+JSON Fields:
 - root_cause_type
 - affected_component
 - probable_cause
 - evidence (array)
 - impact
 - recommended_next_steps (array)
-
-Example Format:
-{{
-  "root_cause_type": "...",
-  "affected_component": "...",
-  "probable_cause": "...",
-  "evidence": ["..."],
-  "impact": "...",
-  "recommended_next_steps": ["...", "..."]
-}}
-
-Now generate RCA for this incident:
-
-Short Description: {incident["short_description"]}
-Category: {incident.get("category", "unknown")}
-Priority: {incident.get("priority", "unknown")}
-Work Notes: {incident.get("work_notes", "")}
 """
 
 
-# ---------------- LLM CALL ----------------
 def generate_raw_rca(prompt):
     result = subprocess.run(
         ["ollama", "run", "mistral"],
@@ -75,107 +64,117 @@ def generate_raw_rca(prompt):
     return result.stdout
 
 
-# ---------------- JSON EXTRACTION ----------------
-def extract_json_from_text(text):
+# ---------------- PARSING ----------------
+def extract_json(text):
     start = text.find("{")
     end = text.rfind("}")
+
     if start == -1 or end == -1:
         raise ValueError("No JSON found")
+
     return json.loads(text[start:end + 1])
 
 
-# ---------------- VALIDATION ----------------
-def validate_rca(rca):
-    missing = [f for f in REQUIRED_FIELDS if f not in rca]
+def validate_rca(rca_obj):
+    missing = [f for f in REQUIRED_FIELDS if f not in rca_obj]
     if missing:
-        raise ValueError("Missing fields: " + ", ".join(missing))
+        raise ValueError("Missing RCA fields: " + ", ".join(missing))
 
 
-# ---------------- CONFIDENCE MODEL ----------------
+# ---------------- CONFIDENCE ENGINE ----------------
 def calculate_confidence(rca, incident):
-    score = 0.5
+    score = 0.50
     reasons = []
 
+    # Signature boosters
     if "OutOfMemoryError" in incident.get("work_notes", ""):
-        score += 0.2
-        reasons.append("OOM pattern detected")
+        score += 0.20
+        reasons.append("OOM signature detected")
+
+    if "timeout" in incident.get("description", ""):
+        score += 0.15
+        reasons.append("Timeout keyword")
 
     if rca.get("affected_component"):
-        score += 0.1
+        score += 0.10
         reasons.append("Component identified")
 
     score = min(score, 0.95)
 
+    risk_level = "LOW" if score >= 0.75 else "MEDIUM"
+
     return {
         "confidence_score": round(score, 2),
         "confidence_reason": ", ".join(reasons),
-        "risk_level": "LOW" if score >= 0.75 else "MEDIUM",
+        "risk_level": risk_level,
         "requires_human_approval": score < 0.75
     }
 
 
-# ---------------- DECISION ENGINE ----------------
-def make_agent_decision(rca_block):
-    conf = rca_block["confidence"]["confidence_score"]
-    risk = rca_block["confidence"]["risk_level"]
+# ---------------- AGENT DECISION ----------------
+def make_agent_decision(conf):
+    score = conf["confidence_score"]
+    risk = conf["risk_level"]
 
-    if conf < 0.60:
-        return {"decision": "OBSERVE", "reason": "Low confidence", "action_allowed": False}
+    if score < 0.60:
+        return {"decision": "OBSERVE", "action_allowed": False, "reason": "Low confidence"}
 
-    if conf < 0.80:
-        return {"decision": "RECOMMEND", "reason": "Medium confidence", "action_allowed": False}
+    if score < 0.80:
+        return {"decision": "RECOMMEND", "action_allowed": False, "reason": "Medium confidence"}
 
-    if conf >= 0.80 and risk == "LOW":
-        return {"decision": "ACT", "reason": "High confidence", "action_allowed": True}
+    if score >= 0.80 and risk == "LOW":
+        return {"decision": "ACT", "action_allowed": True, "reason": "High confidence / low risk"}
 
-    return {"decision": "OBSERVE", "reason": "Fallback safety", "action_allowed": False}
+    return {"decision": "OBSERVE", "action_allowed": False, "reason": "Fallback safety"}
 
 
-# ---------------- MAIN FLOW ----------------
+# ---------------- MAIN AGENT ----------------
 def main():
-
     incidents = load_incidents()
     incident = incidents[-1]
 
-    # MEMORY MATCH
+    print(f"🧠 RCA Agent analyzing incident: {incident['incident_id']}")
+
+    # Memory-based similarity check
     match = find_similar_incident(incident)
     if match:
         incident["memory_reference"] = {
-            "matched_incident": match.get("incident_id", "unknown"),
+            "matched_incident": match["incident_id"],
             "used_for_context": True
         }
+        write_audit("RCA_MEMORY_MATCH", {"matched": match["incident_id"]})
 
-    # PROMPT + LLM
-    prompt = build_rca_prompt(incident)
-    raw = generate_raw_rca(prompt)
+    # Build prompt
+    prompt = build_prompt(incident)
+    raw_response = generate_raw_rca(prompt)
 
-    # PARSING
     try:
-        rca = extract_json_from_text(raw)
+        rca = extract_json(raw_response)
         validate_rca(rca)
-        write_audit("RCA_GENERATED", rca)
     except Exception as e:
-        incident["rca"] = {"error": str(e), "raw_output": raw}
+        print("❌ RCA failed:", str(e))
+        incident["rca"] = {"error": str(e), "raw_output": raw_response}
         save_incidents(incidents)
         return
 
-    # CONFIDENCE
+    # Confidence
     conf = calculate_confidence(rca, incident)
     rca["confidence"] = conf
-    write_audit("CONFIDENCE_SCORED", conf)
 
-    incident["rca"] = {**rca, "generated_at": datetime.now().isoformat()}
-
-    # DECISION
-    decision = make_agent_decision(incident["rca"])
+    # Decision
+    decision = make_agent_decision(conf)
     incident["agent_decision"] = decision
-    write_audit("AGENT_DECISION", decision)
 
-    # SAVE BACK
+    # Save RCA into incident
+    incident["rca"] = {
+        **rca,
+        "generated_at": datetime.now().isoformat()
+    }
+
     incidents[-1] = incident
     save_incidents(incidents)
 
-    # SAVE TO KB
+    # Store into KB
     try:
         with open(HISTORICAL_RCA_PATH, "r") as f:
             hist = json.load(f)
@@ -186,9 +185,8 @@ def main():
     with open(HISTORICAL_RCA_PATH, "w") as f:
         json.dump(hist, f, indent=4)
 
-    write_audit("RCA_STORED_IN_KB", {"count": len(hist)})
-
-    print("✅ RCA Generated Successfully")
+    write_audit("RCA_GENERATED", {"incident": incident["incident_id"]})
+    print("✅ RCA Completed Successfully")
 
 
 if __name__ == "__main__":

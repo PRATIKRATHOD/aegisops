@@ -16,16 +16,21 @@ def save_incidents(incidents):
 
 
 # ---------------- SIMULATION ENGINE ----------------
-def generate_execution_preview(action_plan):
-    """Safe simulation (no real commands run)."""
+def generate_execution_preview(actions):
+    """
+    Creates a SAFE execution preview (simulation only).
+    No commands are run.
+    """
 
     preview_steps = []
 
-    for step in action_plan.get("steps", []):
+    for action in actions:
         preview_steps.append({
-            "step": step,
+            "step": action["description"],
+            "command": action["command"],
+            "risk": action["risk"],
             "status": "PENDING",
-            "notes": "Simulation only – no actual execution performed."
+            "notes": "This is a simulation only. No real execution performed."
         })
 
     return preview_steps
@@ -36,44 +41,43 @@ def main():
     incidents = load_incidents()
     incident = incidents[-1]
 
-    # Load decision and plan
+    action_block = incident.get("action_recommendations", {})
+    action_plan = action_block.get("actions", [])
     decision = incident.get("agent_decision", {})
-    action_plan = incident.get("action_plan", None)
 
     if not action_plan:
-        print("❌ No action_plan found. Run action_planner.py first.")
+        print("❌ No action plan found. Run Agent-3 first.")
         return
 
-    # Execution mode
-    execution_mode = (
-        "SIMULATION_ONLY"
-        if not decision.get("action_allowed", False)
-        else "SAFE_MODE"
-    )
+    # Determine execution mode
+    if decision.get("action_allowed", False):
+        execution_mode = "SAFE_MODE"    # Acting but simulated
+    else:
+        execution_mode = "SIMULATION_ONLY"
 
     preview_steps = generate_execution_preview(action_plan)
 
     execution_preview = {
         "generated_at": datetime.now().isoformat(),
-        "risk_level": action_plan.get("risk_level", "UNKNOWN"),
-        "requires_approval": action_plan.get("requires_approval", True),
         "execution_mode": execution_mode,
+        "risk_level": decision.get("reason", "UNKNOWN"),
+        "requires_approval": not decision.get("action_allowed", False),
         "steps": preview_steps
     }
 
-    # Save into incident
+    # Attach execution preview
     incident["execution_preview"] = execution_preview
     incidents[-1] = incident
     save_incidents(incidents)
 
-    # Audit log
+    # Audit logging
     write_audit("EXECUTION_PREVIEW_CREATED", {
-        "incident_id": incident.get("incident_id"),
+        "incident": incident.get("incident_id"),
         "steps": len(preview_steps),
         "mode": execution_mode
     })
 
-    print("✅ Execution Preview Generated Successfully")
+    print("✅ Execution preview generated successfully for", incident["incident_id"])
 
 
 if __name__ == "__main__":
