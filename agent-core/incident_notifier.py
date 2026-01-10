@@ -68,6 +68,8 @@ def process_decision(incident):
         print("Unknown decision:", state)
 
     write_audit("INCIDENT_NOTIFIED", {"incident": incident_id, "state": state})
+ 
+
 
 
 # ---------------- MAIN ----------------
@@ -78,6 +80,12 @@ def main():
     print("\n🔔 Running Agent 7: Incident Notifier\n")
 
     process_decision(incident)
+    incident["notification_state"] = incident.get("agent_decision", {}).get("decision")
+    incident["notified_at"] = datetime.now().isoformat()
+
+    with open(INCIDENTS_PATH, "w") as f:
+        json.dump(incidents, f, indent=4)
+
 
     print("\n✅ Agent 7 completed successfully\n")
 

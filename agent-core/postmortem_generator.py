@@ -122,8 +122,14 @@ Fill all sections based on the incident.
     # SAVE
     postmortem["generated_at"] = datetime.now().isoformat()
 
-    with open(POSTMORTEM_PATH, "w") as f:
-        json.dump(postmortem, f, indent=4)
+        # Attach postmortem INSIDE the incident object
+    incident["postmortem"] = postmortem
+    incident["postmortem_available"] = True
+    incident["postmortem_generated_at"] = postmortem["generated_at"]
+
+    # Write changes back to incidents.json
+    with open(INCIDENTS_PATH, "w") as f:
+        json.dump(incidents, f, indent=4)
 
     write_audit("POSTMORTEM_GENERATED", {
         "incident_id": incident.get("incident_id"),
@@ -131,6 +137,7 @@ Fill all sections based on the incident.
     })
 
     print("✅ Postmortem Generated Successfully")
+
 
 
 if __name__ == "__main__":

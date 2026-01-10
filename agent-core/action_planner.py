@@ -72,7 +72,6 @@ def generate_actions(prompt):
 
 # ---------------- FIXED JSON PARSER ----------------
 def extract_json(text):
-    # Clean junk characters
     cleaned = (
         text.replace("\\", "")
             .replace("`", "")
@@ -81,11 +80,13 @@ def extract_json(text):
             .strip()
     )
 
-    # Fix common AI mistakes
-    cleaned = cleaned.replace("}, {", "}, {")
-    cleaned = cleaned.replace("], {", "], {")
+    # Fix hallucinated characters like:  {n  "description"
+    cleaned = cleaned.replace("n    \"", "\"")
+    cleaned = cleaned.replace("n   \"", "\"")
+    cleaned = cleaned.replace("n  \"", "\"")
+    cleaned = cleaned.replace("n \"", "\"")
 
-    # Fix trailing commas
+    # Fix common AI mistakes
     cleaned = cleaned.replace(", ]", "]")
     cleaned = cleaned.replace(",]", "]")
 
@@ -97,13 +98,9 @@ def extract_json(text):
 
     json_block = cleaned[start:end+1]
 
-    # DEBUG
     print("\nRAW CLEANED BLOCK:\n", json_block, "\n")
 
-    try:
-        return json.loads(json_block)
-    except Exception:
-        raise
+    return json.loads(json_block)
 
 
 # ---------------- MAIN ----------------
