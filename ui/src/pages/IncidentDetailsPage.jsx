@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { apiGet } from "../api/apiClient";
 
 export default function IncidentDetailsPage() {
@@ -7,168 +7,218 @@ export default function IncidentDetailsPage() {
   const [incident, setIncident] = useState(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await apiGet(`/incidents/${id}`);
-        setIncident(data);
-      } catch (err) {
-        console.error("Failed to load incident:", err);
-      }
-    }
     load();
-  }, [id]);
+  }, []);
 
-  if (!incident) {
-    return <h2 style={{ padding: 20 }}>Loading...</h2>;
+  async function load() {
+    try {
+      const data = await apiGet(`/incidents/${id}`);
+      setIncident(data);
+    } catch (err) {
+      console.error("Failed to load incident:", err);
+    }
   }
 
-  return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-      
-      <Link to="/" style={backLink}>
-        ← Back to Incidents
-      </Link>
+  if (!incident) return <h2>Loading incident...</h2>;
 
-      <h1 style={title}>Incident {incident.incident_id}</h1>
+  return (
+    <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+
+      {/* PAGE TITLE */}
+      <h1 style={pageTitleStyle}>Incident #{incident.incident_id}</h1>
 
       {/* SUMMARY */}
-      <SectionCard title="Summary">
-        <table style={infoTable}>
-          <tbody>
-            <InfoRow label="Short Description" value={incident.short_description} />
-            <InfoRow label="Priority" value={incident.priority} />
-            <InfoRow label="Status" value={incident.status || "OPEN"} />
-            <InfoRow label="Category" value={incident.category} />
-            <InfoRow label="Subcategory" value={incident.subcategory} />
-            <InfoRow label="Opened At" value={incident.opened_at} />
-            <InfoRow label="Opened By" value={incident.opened_by} />
-          </tbody>
-        </table>
-      </SectionCard>
+      <Section title="Incident Summary">
+        <KeyValue label="Short Description" value={incident.short_description} />
+        <KeyValue label="Status" value={incident.status} />
+        <KeyValue label="Priority" value={incident.priority} />
+        <KeyValue label="Category" value={incident.category} />
+        <KeyValue label="Opened At" value={incident.opened_at} />
+        <KeyValue label="Opened By" value={incident.opened_by} />
+      </Section>
 
       {/* RCA */}
-      <SectionCard title="Root Cause Analysis">
+      <Section title="Root Cause Analysis">
         {incident.rca ? (
-          <pre style={jsonBox}>{JSON.stringify(incident.rca, null, 2)}</pre>
-        ) : (
-          <EmptyText>No RCA available</EmptyText>
-        )}
-      </SectionCard>
+          <>
+            <KeyValue label="Root Cause Type" value={incident.rca.root_cause_type} />
+            <KeyValue label="Affected Component" value={incident.rca.affected_component} />
+            <KeyValue label="Probable Cause" value={incident.rca.probable_cause} />
 
-      {/* ACTION PLAN */}
-      <SectionCard title="Action Plan">
-        {incident.action_plan ? (
-          <pre style={jsonBox}>{JSON.stringify(incident.action_plan, null, 2)}</pre>
+            <ListBlock label="Evidence" items={incident.rca.evidence} />
+            <KeyValue label="Impact" value={incident.rca.impact} />
+
+            <ListBlock
+              label="Recommended Next Steps"
+              items={incident.rca.recommended_next_steps}
+            />
+
+            {/* Confidence */}
+            {incident.rca.confidence && (
+              <div style={subCard}>
+                <h4 style={subHeader}>Confidence Score</h4>
+                <KeyValue
+                  label="Score"
+                  value={`${incident.rca.confidence.confidence_score}`}
+                />
+                <KeyValue
+                  label="Reason"
+                  value={incident.rca.confidence.confidence_reason}
+                />
+                <KeyValue
+                  label="Risk Level"
+                  value={incident.rca.confidence.risk_level}
+                />
+              </div>
+            )}
+          </>
         ) : (
-          <EmptyText>No action plan available</EmptyText>
+          <p>No RCA data available for this incident.</p>
         )}
-      </SectionCard>
+      </Section>
+
+      {/* ACTION RECOMMENDATIONS */}
+      <Section title="Action Recommendations">
+        {incident.action_recommendations ? (
+          <ListBlock
+            label="Actions"
+            items={incident.action_recommendations.actions.map(
+              (a) => `${a.description} (Risk: ${a.risk})`
+            )}
+          />
+        ) : (
+          <p>No action recommendations found.</p>
+        )}
+      </Section>
 
       {/* EXECUTION PREVIEW */}
-      <SectionCard title="Execution Preview">
+      <Section title="Execution Preview">
         {incident.execution_preview ? (
-          <pre style={jsonBox}>{JSON.stringify(incident.execution_preview, null, 2)}</pre>
-        ) : (
-          <EmptyText>No execution preview available</EmptyText>
-        )}
-      </SectionCard>
+          <>
+            <KeyValue
+              label="Execution Mode"
+              value={incident.execution_preview.execution_mode}
+            />
+            <KeyValue
+              label="Risk Level"
+              value={incident.execution_preview.risk_level}
+            />
+            <KeyValue
+              label="Requires Approval"
+              value={
+                incident.execution_preview.requires_approval ? "YES" : "NO"
+              }
+            />
 
-      {/* AGENT DECISION */}
-      <SectionCard title="Agent Decision">
-        {incident.agent_decision ? (
-          <pre style={jsonBox}>{JSON.stringify(incident.agent_decision, null, 2)}</pre>
+            <ListBlock
+              label="Steps"
+              items={incident.execution_preview.steps.map(
+                (s) => `${s.step} — ${s.status}`
+              )}
+            />
+          </>
         ) : (
-          <EmptyText>No agent decision available</EmptyText>
+          <p>No execution preview generated.</p>
         )}
-      </SectionCard>
-
+      </Section>
     </div>
   );
 }
 
-/* ---------- COMPONENTS ---------- */
+/* ---------------- REUSABLE COMPONENTS ---------------- */
 
-function SectionCard({ title, children }) {
+function Section({ title, children }) {
   return (
-    <div style={card}>
-      <h2 style={sectionTitle}>{title}</h2>
-      {children}
+    <div style={sectionStyle}>
+      <div style={sectionHeader}>{title}</div>
+      <div>{children}</div>
     </div>
   );
 }
 
-function InfoRow({ label, value }) {
+function KeyValue({ label, value }) {
   return (
-    <tr>
-      <td style={tdLabel}>{label}</td>
-      <td style={tdValue}>{value}</td>
-    </tr>
+    <div style={rowStyle}>
+      <div style={labelStyle}>{label}</div>
+      <div style={valueStyle}>{value ?? "—"}</div>
+    </div>
   );
 }
 
-function EmptyText({ children }) {
-  return <p style={noData}>{children}</p>;
+function ListBlock({ label, items }) {
+  return (
+    <div style={{ marginBottom: "12px" }}>
+      <div style={labelStyle}>{label}</div>
+      <ul style={listStyle}>
+        {items?.length ? (
+          items.map((item, idx) => <li key={idx}>{item}</li>)
+        ) : (
+          <li>—</li>
+        )}
+      </ul>
+    </div>
+  );
 }
 
-/* ---------- STYLES ---------- */
+/* ------------------- STYLES ------------------- */
 
-const title = {
-  marginBottom: "20px",
-  color: "#111827",
-};
-
-const backLink = {
-  display: "inline-block",
-  marginBottom: "20px",
-  color: "#2563EB",
-  textDecoration: "none",
-  fontSize: "15px",
-};
-
-const card = {
-  background: "white",
-  padding: "20px",
-  borderRadius: "10px",
+const pageTitleStyle = {
+  fontSize: "28px",
+  fontWeight: "700",
   marginBottom: "25px",
-  boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+  color: "#111827"
 };
 
-const sectionTitle = {
-  marginBottom: "15px",
-  fontSize: "18px",
-  color: "#111827",
-  borderBottom: "1px solid #E5E7EB",
-  paddingBottom: "8px",
+const sectionStyle = {
+  background: "white",
+  padding: "25px",
+  borderRadius: "12px",
+  marginBottom: "25px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  border: "1px solid #E5E7EB"
 };
 
-const infoTable = {
-  width: "100%",
-  borderCollapse: "collapse",
-};
-
-const tdLabel = {
-  width: "30%",
-  padding: "10px 0",
-  color: "#4B5563",
+const sectionHeader = {
+  fontSize: "20px",
   fontWeight: "600",
+  marginBottom: "18px",
+  paddingBottom: "10px",
+  borderBottom: "2px solid #E5E7EB",
+  color: "#1F2937"
 };
 
-const tdValue = {
-  padding: "10px 0",
-  color: "#111827",
+const rowStyle = {
+  display: "flex",
+  marginBottom: "8px"
 };
 
-const jsonBox = {
+const labelStyle = {
+  width: "220px",
+  fontWeight: "600",
+  color: "#374151"
+};
+
+const valueStyle = {
+  flex: 1,
+  color: "#111827"
+};
+
+const listStyle = {
+  paddingLeft: "20px",
+  marginTop: "5px",
+  color: "#111827"
+};
+
+const subCard = {
   background: "#F9FAFB",
   padding: "15px",
   borderRadius: "8px",
-  border: "1px solid #E5E7EB",
-  fontSize: "14px",
-  whiteSpace: "pre-wrap",
-  overflowX: "auto",
+  marginTop: "15px"
 };
 
-const noData = {
-  color: "#6B7280",
-  fontStyle: "italic",
+const subHeader = {
+  margin: 0,
+  marginBottom: "10px",
+  fontWeight: "600",
+  color: "#374151"
 };
