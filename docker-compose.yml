@@ -32,6 +32,24 @@ services:
     networks:
       - aegisops-net
 
+  # -------------------------
+  # 3) React UI (Nginx)
+  # -------------------------
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: aegisops-ui
+    ports:
+      - "5173:80"      # Serve UI at localhost:5173
+    depends_on:
+      - backend
+    networks:
+      - aegisops-net
+
+# -------------------------
+# Shared network
+# -------------------------
 networks:
   aegisops-net:
     driver: bridge
