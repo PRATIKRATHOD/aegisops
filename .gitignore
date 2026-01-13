@@ -8,7 +8,7 @@ venv/
 # Logs
 logs/*.log
 
-# Incidents runtime data
+# Incidents runtime data (ignored everywhere)
 incidents/incidents.json
 incidents/audit_log.json
 backend/src/main/resources/data/*.json
@@ -22,10 +22,19 @@ Thumbs.db
 target/
 backend/target/
 
-# UI build output
+# UI (React / Vite)
 ui/node_modules/
-dist/
+ui/dist/
+ui/.env
+ui/.env.local
+ui/.env.*.local
 
-# IDE files
-.vscode/
-.idea/
+# Logs
+ui/npm-debug.log*
+ui/yarn-debug.log*
+ui/yarn-error.log*
+
+# Editor
+ui/.vscode/
+ui/.idea/
+ui/.vite/
