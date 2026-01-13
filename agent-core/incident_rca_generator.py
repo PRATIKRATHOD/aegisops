@@ -1,11 +1,12 @@
 import json
-import subprocess
+import requests
+import os
 from datetime import datetime
 
 from path_config import INCIDENTS_PATH, HISTORICAL_RCA_PATH
 from audit_logger import write_audit
 from knowledge_base.incident_memory import find_similar_incident
-
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 
 # ---------------- REQUIRED FIELDS ----------------
 REQUIRED_FIELDS = [
@@ -29,7 +30,17 @@ def save_incidents(incidents):
         json.dump(incidents, f, indent=4)
 
 
-# ---------------- LLM CALL ----------------
+# ---------------- LLM CALL (HTTP API) ----------------
+def call_llm(prompt):
+    payload = {
+        "model": "mistral",
+        "prompt": prompt,
+        "stream": False
+    }
+    r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    return r.json().get("response", "")
+
+
 def build_prompt(incident):
     return f"""
 You are a senior SRE.
@@ -54,16 +65,6 @@ JSON Fields:
 """
 
 
-def generate_raw_rca(prompt):
-    result = subprocess.run(
-        ["ollama", "run", "mistral"],
-        input=prompt,
-        capture_output=True,
-        encoding="utf-8"
-    )
-    return result.stdout
-
-
 # ---------------- PARSING ----------------
 def extract_json(text):
     start = text.find("{")
@@ -86,7 +87,6 @@ def calculate_confidence(rca, incident):
     score = 0.50
     reasons = []
 
-    # Signature boosters
     if "OutOfMemoryError" in incident.get("work_notes", ""):
         score += 0.20
         reasons.append("OOM signature detected")
@@ -128,14 +128,13 @@ def make_agent_decision(conf):
     return {"decision": "OBSERVE", "action_allowed": False, "reason": "Fallback safety"}
 
 
-# ---------------- MAIN AGENT ----------------
+# ---------------- MAIN ----------------
 def main():
     incidents = load_incidents()
     incident = incidents[-1]
 
     print(f"🧠 RCA Agent analyzing incident: {incident['incident_id']}")
 
-    # Memory-based similarity check
     match = find_similar_incident(incident)
     if match:
         incident["memory_reference"] = {
@@ -144,9 +143,9 @@ def main():
         }
         write_audit("RCA_MEMORY_MATCH", {"matched": match["incident_id"]})
 
-    # Build prompt
     prompt = build_prompt(incident)
-    raw_response = generate_raw_rca(prompt)
+
+    raw_response = call_llm(prompt)
 
     try:
         rca = extract_json(raw_response)
@@ -157,15 +156,12 @@ def main():
         save_incidents(incidents)
         return
 
-    # Confidence
     conf = calculate_confidence(rca, incident)
     rca["confidence"] = conf
 
-    # Decision
     decision = make_agent_decision(conf)
     incident["agent_decision"] = decision
 
-    # Save RCA into incident
     incident["rca"] = {
         **rca,
         "generated_at": datetime.now().isoformat()
@@ -174,7 +170,6 @@ def main():
     incidents[-1] = incident
     save_incidents(incidents)
 
-    # Store into KB
     try:
         with open(HISTORICAL_RCA_PATH, "r") as f:
             hist = json.load(f)

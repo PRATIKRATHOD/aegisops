@@ -1,8 +1,10 @@
 import json
-import subprocess
+import requests
+import os
 from datetime import datetime
 from path_config import INCIDENTS_PATH, POSTMORTEM_PATH
 from audit_logger import write_audit
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 
 # ---------------- LOAD INCIDENT ----------------
 def load_incidents():
@@ -10,24 +12,19 @@ def load_incidents():
         return json.load(f)
 
 
-# ---------------- LLM CALL ----------------
-def call_llm(prompt: str):
-    """Runs ollama mistral with a strict JSON-only instruction."""
-    result = subprocess.run(
-        ["ollama", "run", "mistral"],
-        input=prompt.encode("utf-8"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-
-    raw_text = result.stdout.decode("utf-8", errors="ignore")
-
-    return raw_text
+# ---------------- LLM CALL (HTTP) ----------------
+def call_llm(prompt):
+    payload = {
+        "model": "mistral",
+        "prompt": prompt,
+        "stream": False
+    }
+    r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    return r.json().get("response", "")
 
 
 # ---------------- JSON EXTRACTION ----------------
 def extract_json(text: str):
-    """Extracts the first valid JSON object from LLM output."""
     start = text.find("{")
     end = text.rfind("}")
 
@@ -36,11 +33,9 @@ def extract_json(text: str):
 
     snippet = text[start:end + 1]
 
-    # Try parsing
     try:
         return json.loads(snippet)
     except Exception:
-        # Common fix: remove backslashes
         cleaned = snippet.replace("\\", "")
         return json.loads(cleaned)
 
@@ -53,7 +48,7 @@ def main():
         print("❌ No incidents available.")
         return
 
-    incident = incidents[-1]  # last incident
+    incident = incidents[-1]
 
     prompt = f"""
 You are a senior SRE generating a structured post-incident report.
@@ -91,8 +86,6 @@ OUTPUT JSON FORMAT:
       "long_term_recommendations": []
   }}
 }}
-
-Fill all sections based on the incident.
     """
 
     raw = call_llm(prompt)
@@ -100,34 +93,25 @@ Fill all sections based on the incident.
     try:
         postmortem = extract_json(raw)
     except Exception:
-        print("❌ Model did not return valid JSON.\n")
-        print("RAW OUTPUT:\n", raw)
-
-        # Fallback
         postmortem = {
             "executive_summary": {
                 "incident_id": incident.get("incident_id"),
-                "summary": "Postmortem unavailable — model returned invalid JSON.",
+                "summary": "Postmortem unavailable — invalid JSON.",
                 "impact": incident.get("impact", "unknown"),
                 "duration": "unknown",
                 "root_cause": "unknown",
                 "initial_detection": incident.get("opened_at"),
                 "resolution_overview": "unknown"
-            },
-            "impact_analysis": {},
-            "root_cause_analysis": {},
-            "action_items": {}
+            }
         }
 
-    # SAVE
     postmortem["generated_at"] = datetime.now().isoformat()
 
-        # Attach postmortem INSIDE the incident object
+    # Attach inside incident object
     incident["postmortem"] = postmortem
     incident["postmortem_available"] = True
     incident["postmortem_generated_at"] = postmortem["generated_at"]
 
-    # Write changes back to incidents.json
     with open(INCIDENTS_PATH, "w") as f:
         json.dump(incidents, f, indent=4)
 
@@ -137,7 +121,6 @@ Fill all sections based on the incident.
     })
 
     print("✅ Postmortem Generated Successfully")
-
 
 
 if __name__ == "__main__":

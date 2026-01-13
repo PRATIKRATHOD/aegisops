@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  agent-core:
+    build:
+      context: ./agent-core
+      dockerfile: Dockerfile
+    container_name: aegisops-agent-core
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_URL=http://host.docker.internal:11434
+    volumes:
+      - ./backend/src/main/resources/data:/backend/src/main/resources/data
+    networks:
+      - aegisops-net
+
+networks:
+  aegisops-net:
+    driver: bridge

@@ -1,10 +1,11 @@
 import json
-import subprocess
+import requests
+import os
 from datetime import datetime
 
 from path_config import INCIDENTS_PATH, ACTIONS_HISTORY_PATH
 from audit_logger import write_audit
-
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 
 # ---------------- LOAD/SAVE ----------------
 def load_incidents():
@@ -58,19 +59,18 @@ JSON FORMAT (strict):
 """
 
 
-# ---------------- LLM CALL ----------------
-def generate_actions(prompt):
-    result = subprocess.run(
-        ["ollama", "run", "mistral"],
-        input=prompt,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace"
-    )
-    return result.stdout
+# ---------------- LLM CALL (HTTP) ----------------
+def call_llm(prompt):
+    payload = {
+        "model": "mistral",
+        "prompt": prompt,
+        "stream": False
+    }
+    r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    return r.json().get("response", "")
 
 
-# ---------------- FIXED JSON PARSER ----------------
+# ---------------- PARSING ----------------
 def extract_json(text):
     cleaned = (
         text.replace("\\", "")
@@ -80,13 +80,11 @@ def extract_json(text):
             .strip()
     )
 
-    # Fix hallucinated characters like:  {n  "description"
     cleaned = cleaned.replace("n    \"", "\"")
     cleaned = cleaned.replace("n   \"", "\"")
     cleaned = cleaned.replace("n  \"", "\"")
     cleaned = cleaned.replace("n \"", "\"")
 
-    # Fix common AI mistakes
     cleaned = cleaned.replace(", ]", "]")
     cleaned = cleaned.replace(",]", "]")
 
@@ -113,7 +111,7 @@ def main():
         return
 
     prompt = build_action_prompt(incident)
-    raw = generate_actions(prompt)
+    raw = call_llm(prompt)
 
     try:
         actions = extract_json(raw)
