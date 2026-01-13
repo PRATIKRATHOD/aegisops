@@ -1,6 +1,7 @@
-version: "3.9"
-
 services:
+  # -------------------------
+  # 1) Python Agent Core
+  # -------------------------
   agent-core:
     build:
       context: ./agent-core
@@ -9,6 +10,23 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_URL=http://host.docker.internal:11434
+    volumes:
+      - ./backend/src/main/resources/data:/backend/src/main/resources/data
+    depends_on:
+      - backend
+    networks:
+      - aegisops-net
+
+  # -------------------------
+  # 2) Spring Boot Backend
+  # -------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegisops-backend
+    ports:
+      - "8080:8080"
     volumes:
       - ./backend/src/main/resources/data:/backend/src/main/resources/data
     networks:
