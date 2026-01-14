@@ -12,7 +12,7 @@ public class ApiApplication {
     public static void main(String[] args) {
         SpringApplication.run(ApiApplication.class, args);
     }
-
+asasas
     @Bean
     public FilterRegistrationBean<SecurityConfig> securityFilter(SecurityConfig securityConfig) {
         FilterRegistrationBean<SecurityConfig> bean = new FilterRegistrationBean<>();
