@@ -12,6 +12,7 @@ public class ApiApplication {
     public static void main(String[] args) {
         SpringApplication.run(ApiApplication.class, args);
     }
+BROKEN_CODE_HERE
 
     @Bean
     public FilterRegistrationBean<SecurityConfig> securityFilter(SecurityConfig securityConfig) {
